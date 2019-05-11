@@ -14,7 +14,7 @@
     "homebridge-plugin"
   ],
   "license": "UNLICENSED",
-  "name": "@eldilor/homebridge-http-light",
+  "name": "homebridge-light-http",
   "repository": {
     "type": "git",
     "url": "git://github.com/eldilor/homebridbe-http-light.git"

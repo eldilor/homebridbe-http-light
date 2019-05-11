@@ -1,69 +1,87 @@
-let Service, Characteristic;
-const request = require('request');
-const url = require('url');
+var Service, Characteristic;
+var request = require('request');
+
 
 module.exports = function (homebridge) {
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
-  homebridge.registerAccessory("homebridge-http-light", "Homebridge HTTP Ligt Plugin", HttpLightAccessory);
+  homebridge.registerAccessory('homebridge-http-light', 'HttpLight', HttpLightAccessory);
 };
+
 
 function HttpLightAccessory(log, config) {
   this.log = log;
-  this.getUrl = url.parse(config['getUrl']);
-  this.postUrl = url.parse(config['postUrl']);
+
+  this.light = config['light'];
+  this.lightStatus = config['lightStatus'];
+  this.name = config['name'] || 'Światło';
+  this.debug = config['debug'] || false;
 }
 
 HttpLightAccessory.prototype = {
+  doHttpRequest: function (url, method, data, callback) {
+    request({
+      url: url,
+      formData: data,
+      method: method
+    }, callback);
+  },
+
+  setLightState: function (lightState, callback) {
+    this.debugLog('Setting Light State to ' + (lightState ? 'ON' : 'OFF'));
+
+    let requestData = {
+      action: 'TURN_' + (lightState ? 'ON' : 'OFF')
+    };
+
+    this.doHttpRequest(this.light.url, this.light.method, requestData, function (error, response, responseBody) {
+      if (error) {
+        this.log('HTTP setLightState() failed: %s', error.message);
+        callback(error);
+      } else {
+        this.debugLog('setLightState REQUEST finished with success');
+        callback();
+      }
+    }.bind(this));
+
+  },
+
+  getLightState: function (callback) {
+    this.debugLog('Getting Light State');
+
+    this.doHttpRequest(this.lightStatus.url, this.lightStatus.method, {}, function (error, response, responseBody) {
+      if (error) {
+        this.log('HTTP getLightState() failed: %s', error.message);
+        callback(error);
+      } else {
+        this.debugLog('getLightState REQUEST finished with success');
+
+        const binaryState = parseInt(responseBody.replace(/\D/g, ''));
+
+        callback(null, binaryState > 0);
+      }
+    }.bind(this));
+  },
+
+  debugLog: function (message) {
+    if (this.debug) {
+      this.log(message);
+    }
+  },
+
   getServices: function () {
-    let informationService = new Service.AccessoryInformation();
-    informationService
-      .setCharacteristic(Characteristic.Manufacturer, "My switch manufacturer")
-      .setCharacteristic(Characteristic.Model, "My switch model")
-      .setCharacteristic(Characteristic.SerialNumber, "123-456-789");
+    this.informationService = new Service.AccessoryInformation();
+    this.informationService
+      .setCharacteristic(Characteristic.Manufacturer, 'HTTP Light Oskar Kupski')
+      .setCharacteristic(Characteristic.Model, 'HTTP Light model')
+      .setCharacteristic(Characteristic.SerialNumber, 'HTTP Light Serial Number');
 
-    let switchService = new Service.Switch("My switch");
-    switchService
+    this.lightbulbService = new Service.Lightbulb(this.name);
+    this.lightbulbService
       .getCharacteristic(Characteristic.On)
-      .on('get', this.getSwitchOnCharacteristic.bind(this))
-      .on('set', this.setSwitchOnCharacteristic.bind(this));
+      .on('get', this.getLightState.bind(this))
+      .on('set', this.setLightState.bind(this));
 
-    this.informationService = informationService;
-    this.switchService = switchService;
-    return [informationService, switchService];
-  },
-
-  getSwitchOnCharacteristic: function (next) {
-    const me = this;
-    request({
-        url: me.getUrl,
-        method: 'GET',
-      },
-      function (error, response, body) {
-        if (error) {
-          me.log('STATUS: ' + response.statusCode);
-          me.log(error.message);
-          return next(error);
-        }
-        return next(null, body.currentState);
-      });
-  },
-
-  setSwitchOnCharacteristic: function (on, next) {
-    const me = this;
-    request({
-        url: me.postUrl,
-        body: {'targetState': on},
-        method: 'POST',
-        headers: {'Content-type': 'application/json'}
-      },
-      function (error, response) {
-        if (error) {
-          me.log('STATUS: ' + response.statusCode);
-          me.log(error.message);
-          return next(error);
-        }
-        return next();
-      });
+    return [this.informationService, this.lightbulbService];
   }
 };
