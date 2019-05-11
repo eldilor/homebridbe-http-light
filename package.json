@@ -1,0 +1,31 @@
+{
+  "author": "Oskar Kupski",
+  "dependencies": {
+    "request": "^2.65.0"
+  },
+  "deprecated": false,
+  "description": "",
+  "engines": {
+    "homebridge": ">=0.2.0",
+    "node": ">=0.12.0"
+  },
+  "homepage": "https://github.com/eldilor/homebridbe-http-light#readme",
+  "keywords": [
+    "homebridge-plugin"
+  ],
+  "license": "UNLICENSED",
+  "name": "@eldilor/homebridge-http-light",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/eldilor/homebridbe-http-light.git"
+  },
+  "version": "1.0.0",
+  "bugs": {
+    "url": "https://github.com/eldilor/homebridbe-http-light/issues"
+  },
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
