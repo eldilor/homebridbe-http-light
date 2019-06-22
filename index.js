@@ -12,55 +12,52 @@ module.exports = function (homebridge) {
 function HttpLightAccessory(log, config) {
   this.log = log;
 
-  this.light = config['light'];
-  this.lightStatus = config['lightStatus'];
-  this.name = config['name'] || 'Światło';
+  this.name = config['name'];
+  this.pin = config['pin'];
+  this.url = config['url'];
   this.debug = config['debug'] || false;
 }
 
 HttpLightAccessory.prototype = {
-  doHttpRequest: function (url, method, data, callback) {
-    request({
-      url: url,
-      formData: data,
-      method: method
-    }, callback);
-  },
-
   setLightState: function (lightState, callback) {
+    const requestData = {
+      form: {
+        action: 'TURN_' + (lightState ? 'ON' : 'OFF'),
+        pin: this.pin
+      }
+    };
+    const _this = this;
+
     this.debugLog('Setting Light State to ' + (lightState ? 'ON' : 'OFF'));
 
-    let requestData = {
-      action: 'TURN_' + (lightState ? 'ON' : 'OFF')
-    };
-
-    this.doHttpRequest(this.light.url, this.light.method, requestData, function (error, response, responseBody) {
+    request.post(this.url, requestData, function (error, httpResponse, body) {
       if (error) {
-        this.log('HTTP setLightState() failed: %s', error.message);
+        _this.debugLog('HTTP setLightState() failed: ' + error.message);
         callback(error);
       } else {
-        this.debugLog('setLightState REQUEST finished with success');
+        _this.debugLog('setLightState() REQUEST finished with success');
         callback();
       }
-    }.bind(this));
-
+    });
   },
 
   getLightState: function (callback) {
+    const _this = this;
+
     this.debugLog('Getting Light State');
 
-    this.doHttpRequest(this.lightStatus.url, this.lightStatus.method, {}, function (error, response, responseBody) {
+    request.get(this.url + '?pin=' + this.pin, {}, function (error, httpResponse, body) {
       if (error) {
-        this.log('HTTP getLightState() failed: %s', error.message);
+        _this.debugLog('HTTP getLightState() failed: ' + error.message);
         callback(error);
       } else {
-        this.debugLog('getLightState REQUEST finished with success');
+        _this.debugLog('getLightState() REQUEST finished with success');
 
-        const binaryState = parseInt(responseBody.replace(/\D/g, ''));
+        const binaryState = parseInt(body.replace(/\D/g, ''));
 
-        callback(null, binaryState > 0);
+        callback(null, binaryState === 1);
       }
-    }.bind(this));
+    });
   },
 
   debugLog: function (message) {
@@ -73,7 +70,7 @@ HttpLightAccessory.prototype = {
     this.informationService = new Service.AccessoryInformation();
     this.informationService
       .setCharacteristic(Characteristic.Manufacturer, 'HTTP Light Oskar Kupski')
-      .setCharacteristic(Characteristic.Model, 'HTTP Light model')
+      .setCharacteristic(Characteristic.Model, 'HTTP Light Model')
       .setCharacteristic(Characteristic.SerialNumber, 'HTTP Light Serial Number');
 
     this.lightbulbService = new Service.Lightbulb(this.name);
